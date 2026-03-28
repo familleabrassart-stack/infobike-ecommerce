@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import ProductCard from '@/components/ProductCard'
 import { getProducts } from '@/lib/cyclesoftware'
@@ -28,7 +28,7 @@ function FilterIcon() {
   )
 }
 
-export default function CataloguePage() {
+function CatalogueContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -337,5 +337,13 @@ export default function CataloguePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CataloguePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-gray-500">Chargement…</div>}>
+      <CatalogueContent />
+    </Suspense>
   )
 }
