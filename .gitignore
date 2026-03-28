@@ -1,0 +1,28 @@
+# Dépendances
+node_modules/
+
+# Build Next.js
+.next/
+out/
+
+# Variables d'environnement — NE JAMAIS committer
+.env
+.env.local
+.env*.local
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Vercel
+.vercel
