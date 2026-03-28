@@ -82,6 +82,14 @@ export default function CheckoutPage() {
       if (!res.ok) throw new Error(data.error ?? 'Erreur serveur')
 
       clearCart()
+
+      // Paiement en ligne → redirection vers Mollie
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+        return
+      }
+
+      // Paiement en magasin → confirmation directe
       router.push(`/confirmation?orderId=${data.order.orderId}&total=${data.order.total}`)
     } catch (err) {
       alert((err as Error).message)
