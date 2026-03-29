@@ -6,7 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.EMAIL_FROM ?? 'onboarding@resend.dev'
 const STORE_EMAILS = [
   process.env.EMAIL_STORE_DOUR ?? 'dour@infobike.be',
-  process.env['EMAIL_STORE_MAISIÈRES'] ?? 'maisières@infobike.be',
+  process.env.EMAIL_STORE_MAISIERES ?? 'maisieres@infobike.be',
 ]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
