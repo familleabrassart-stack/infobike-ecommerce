@@ -26,3 +26,7 @@ npm-debug.log*
 
 # Vercel
 .vercel
+
+# Fichiers volumineux
+*.zip
+tsconfig.tsbuildinfo
