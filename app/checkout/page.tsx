@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { stores } from '@/lib/mock-data'
 
-type PaymentMethod = 'card' | 'bancontact' | 'store'
 type DeliveryMode = 'delivery' | 'pickup'
 
 interface FormData {
@@ -37,9 +36,8 @@ export default function CheckoutPage() {
   const router = useRouter()
 
   const [form, setForm] = useState<FormData>(initialForm)
-  const [delivery, setDelivery] = useState<DeliveryMode>('delivery')
+  const [delivery, setDelivery] = useState<DeliveryMode>('pickup')
   const [selectedStore, setSelectedStore] = useState(stores[0].id)
-  const [payment, setPayment] = useState<PaymentMethod>('bancontact')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Partial<FormData>>({})
 
@@ -74,7 +72,7 @@ export default function CheckoutPage() {
             address: delivery === 'pickup' ? `Retrait en magasin – ${selectedStore}` : form.address,
           },
           preferredStore: delivery === 'pickup' ? selectedStore : undefined,
-          paymentMethod: payment,
+          paymentMethod: 'store',
         }),
       })
 
@@ -82,14 +80,6 @@ export default function CheckoutPage() {
       if (!res.ok) throw new Error(data.error ?? 'Erreur serveur')
 
       clearCart()
-
-      // Paiement en ligne → redirection vers Mollie
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl
-        return
-      }
-
-      // Paiement en magasin → confirmation directe
       router.push(`/confirmation?orderId=${data.order.orderId}&total=${data.order.total}`)
     } catch (err) {
       alert((err as Error).message)
@@ -114,7 +104,8 @@ export default function CheckoutPage() {
   return (
     <div className="bg-gray-50 min-h-screen py-8">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        {/* Steps indicator */}
+
+        {/* Étapes */}
         <div className="mb-8 flex items-center justify-center gap-3 text-sm">
           <Link href="/panier" className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-bold">1</span>
@@ -134,13 +125,13 @@ export default function CheckoutPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* ─── Left column ─────────────────────────────────────────────── */}
+
+            {/* ─── Colonne gauche ──────────────────────────────────────────── */}
             <div className="space-y-6 lg:col-span-2">
-              {/* Personal info */}
+
+              {/* Informations personnelles */}
               <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-                <h2 className="mb-4 text-base font-bold text-gray-900">
-                  Informations personnelles
-                </h2>
+                <h2 className="mb-4 text-base font-bold text-gray-900">Informations personnelles</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label">Prénom *</label>
@@ -183,27 +174,25 @@ export default function CheckoutPage() {
                 </div>
               </section>
 
-              {/* Delivery */}
+              {/* Mode de réception */}
               <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
                 <h2 className="mb-4 text-base font-bold text-gray-900">Mode de réception</h2>
                 <div className="mb-4 grid grid-cols-2 gap-3">
-                  {[
+                  {([
+                    { value: 'pickup',   label: '🏪 Retrait en magasin', desc: 'Gratuit, disponible sous 48h' },
                     { value: 'delivery', label: '📦 Livraison à domicile', desc: 'Belgique, gratuite' },
-                    { value: 'pickup', label: '🏪 Retrait en magasin', desc: 'Gratuit, disponible sous 48h' },
-                  ].map((opt) => (
+                  ] as { value: DeliveryMode; label: string; desc: string }[]).map((opt) => (
                     <label
                       key={opt.value}
                       className={`cursor-pointer rounded-xl border-2 p-4 transition-colors ${
-                        delivery === opt.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                        delivery === opt.value ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <input
                         type="radio"
                         className="sr-only"
                         checked={delivery === opt.value}
-                        onChange={() => setDelivery(opt.value as DeliveryMode)}
+                        onChange={() => setDelivery(opt.value)}
                       />
                       <p className="font-semibold text-gray-900 text-sm">{opt.label}</p>
                       <p className="mt-0.5 text-xs text-gray-500">{opt.desc}</p>
@@ -211,7 +200,33 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {delivery === 'delivery' ? (
+                {delivery === 'pickup' ? (
+                  <div className="space-y-2">
+                    <label className="label">Choisir le magasin</label>
+                    {stores.map((store) => (
+                      <label
+                        key={store.id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-colors ${
+                          selectedStore === store.id ? 'border-primary bg-primary/5' : 'border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="store"
+                          className="accent-primary"
+                          checked={selectedStore === store.id}
+                          onChange={() => setSelectedStore(store.id)}
+                        />
+                        <div>
+                          <p className="font-semibold text-sm text-gray-900">{store.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {store.address}, {store.city} — {store.hours}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
                   <div className="space-y-3">
                     <div>
                       <label className="label">Adresse *</label>
@@ -248,92 +263,23 @@ export default function CheckoutPage() {
                       <input className="input bg-gray-50" value={form.country} readOnly />
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="label">Choisir le magasin</label>
-                    {stores.map((store) => (
-                      <label
-                        key={store.id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-colors ${
-                          selectedStore === store.id
-                            ? 'border-primary bg-primary/5'
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="store"
-                          className="accent-primary"
-                          checked={selectedStore === store.id}
-                          onChange={() => setSelectedStore(store.id)}
-                        />
-                        <div>
-                          <p className="font-semibold text-sm text-gray-900">{store.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {store.address}, {store.city} — {store.hours}
-                          </p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
                 )}
               </section>
 
-              {/* Payment */}
+              {/* Paiement */}
               <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-                <h2 className="mb-4 text-base font-bold text-gray-900">Mode de paiement</h2>
-                <div className="grid grid-cols-3 gap-3">
-                  {([
-                    { value: 'bancontact', label: 'Bancontact', emoji: '💳' },
-                    { value: 'card', label: 'Carte bancaire', emoji: '🏦' },
-                    { value: 'store', label: 'En magasin', emoji: '🏪' },
-                  ] as { value: PaymentMethod; label: string; emoji: string }[]).map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={`cursor-pointer rounded-xl border-2 p-3 text-center transition-colors ${
-                        payment === opt.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        className="sr-only"
-                        checked={payment === opt.value}
-                        onChange={() => setPayment(opt.value)}
-                      />
-                      <div className="text-2xl">{opt.emoji}</div>
-                      <p className="mt-1 text-xs font-semibold text-gray-700">{opt.label}</p>
-                    </label>
-                  ))}
-                </div>
-                {payment === 'card' && (
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <label className="label">Numéro de carte</label>
-                      <input className="input" placeholder="1234 5678 9012 3456" maxLength={19} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="label">Expiration</label>
-                        <input className="input" placeholder="MM/AA" maxLength={5} />
-                      </div>
-                      <div>
-                        <label className="label">CVV</label>
-                        <input className="input" placeholder="123" maxLength={3} type="password" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {payment === 'store' && (
-                  <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-                    Vous réglerez lors du retrait ou de la livraison par le technicien INFOBIKE.
+                <h2 className="mb-2 text-base font-bold text-gray-900">Paiement</h2>
+                <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 p-4">
+                  <span className="text-2xl">🏪</span>
+                  <p className="text-sm text-amber-800">
+                    Le paiement s'effectue <strong>en magasin</strong> lors du retrait ou de la livraison par notre technicien.
+                    Nous acceptons les espèces, Bancontact et carte bancaire.
                   </p>
-                )}
+                </div>
               </section>
             </div>
 
-            {/* ─── Order summary ───────────────────────────────────────────── */}
+            {/* ─── Récapitulatif ───────────────────────────────────────────── */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
                 <h2 className="mb-4 text-base font-bold text-gray-900">Votre commande</h2>
@@ -350,16 +296,11 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-xs font-semibold text-gray-900">
-                          {product.name}
-                        </p>
+                        <p className="truncate text-xs font-semibold text-gray-900">{product.name}</p>
                         <p className="text-xs text-gray-500">× {quantity}</p>
                       </div>
                       <span className="shrink-0 text-sm font-bold text-gray-900">
-                        {(product.price * quantity).toLocaleString('fr-BE', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        })}
+                        {(product.price * quantity).toLocaleString('fr-BE', { style: 'currency', currency: 'EUR' })}
                       </span>
                     </div>
                   ))}
@@ -376,7 +317,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-5 w-full rounded-xl bg-accent py-3.5 font-bold text-white shadow-md hover:bg-accent-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-5 w-full rounded-xl bg-accent py-3.5 font-bold text-gray-950 shadow-md hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -392,7 +333,7 @@ export default function CheckoutPage() {
                 </button>
 
                 <p className="mt-3 text-center text-xs text-gray-400">
-                  🔒 Paiement sécurisé SSL
+                  Paiement en magasin — espèces, Bancontact, carte
                 </p>
               </div>
             </div>
@@ -400,34 +341,11 @@ export default function CheckoutPage() {
         </form>
       </div>
 
-      {/* Inline Tailwind utility classes for form elements */}
       <style jsx global>{`
-        .label {
-          display: block;
-          margin-bottom: 4px;
-          font-size: 0.75rem;
-          font-weight: 500;
-          color: #4b5563;
-        }
-        .input {
-          display: block;
-          width: 100%;
-          border-radius: 0.5rem;
-          border: 1px solid #d1d5db;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .input:focus {
-          border-color: #D32F2F;
-          box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
-        }
-        .error {
-          margin-top: 2px;
-          font-size: 0.7rem;
-          color: #ef4444;
-        }
+        .label { display:block; margin-bottom:4px; font-size:.75rem; font-weight:500; color:#4b5563; }
+        .input { display:block; width:100%; border-radius:.5rem; border:1px solid #d1d5db; padding:.5rem .75rem; font-size:.875rem; outline:none; transition:border-color .15s; }
+        .input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+        .error { margin-top:2px; font-size:.7rem; color:#ef4444; }
       `}</style>
     </div>
   )
